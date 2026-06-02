@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>본교무실 원격 호출 시스템</title>
+    <style>
+        :root { --primary-color: #2b579a; --background-color: #f4f6f9; --card-color: #ffffff; --text-color: #333333; }
+        body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { background-color: var(--card-color); padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); width: 100%; max-width: 450px; }
+        h2 { text-align: center; color: var(--primary-color); margin: 0 0 5px 0; }
+        .subtitle { text-align: center; font-size: 14px; color: #666; margin-bottom: 25px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 14px; }
+        input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        input[type="text"]:focus, select:focus { border-color: var(--primary-color); outline: none; }
+        button { width: 100%; padding: 12px; background-color: var(--primary-color); color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
+        button:hover { background-color: #1e3d6b; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .message { margin-top: 15px; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px; display: none; }
+        .success { background-color: #e2f0d9; color: #385723; border: 1px solid #c5e0b4; }
+        .error { background-color: #fce4d6; color: #c65911; border: 1px solid #f8cbad; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>본교무실 원격 호출 시스템</h2>
+    <div class="subtitle">시험기간 안전하고 신속한 교사 호출 서비스</div>
+    
+    <form id="callForm">
+        <div class="form-group">
+            <label for="studentId">학번</label>
+            <input type="text" id="studentId" placeholder="예: 30101" required pattern="[0-9]{5}" title="5자리 학번을 입력해주세요.">
+        </div>
+        <div class="form-group">
+            <label for="studentName">이름</label>
+            <input type="text" id="studentName" placeholder="홍길동" required>
+        </div>
+        <div class="form-group">
+            <label for="purpose">방문 목적</label>
+            <select id="purpose" required>
+                <option value="" disabled selected>방문 목적을 선택하세요</option>
+                <option value="수행평가 제출">수행평가 제출</option>
+                <option value="일반 교과 질문">일반 교과 질문</option>
+                <option value="진학 상담">진학 상담</option>
+                <option value="출결 관련">출결 관련 문의</option>
+                <option value="기타 용무">기타 용무</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="teacherName">호출할 선생님</label>
+            <select id="teacherName" required>
+                <option value="" disabled selected>선생님을 골라주세요</option>
+                <option value="송자선 교감선생님">송자선 교감선생님</option>
+                <option value="윤용민 선생님(지리)">윤용민 선생님(지리)</option>
+                <option value="김용진 선생님(국어)">김용진 선생님(국어)</option>
+                <option value="한은정 선생님(윤리)">한은정 선생님(윤리)</option>
+                <option value="장연지 선생님(영어)">장연지 선생님(영어)</option>
+                <option value="조미화 선생님(음악)">조미화 선생님(음악)</option>
+                <option value="윤방하 선생님(영어)">윤방하 선생님(영어)</option>
+                <option value="김은경 선생님">김은경 선생님</option>
+                <option value="김재곤 선생님(지구과학)">김재곤 선생님(지구과학)</option>
+                <option value="강효민 선생님(수학)">강효민 선생님(수학)</option>
+                <option value="이난주 선생님(생명과학)">이난주 선생님(생명과학)</option>
+                <option value="남현두 선생님(수학)">남현두 선생님(수학)</option>
+                <option value="이재령 선생님(국어)">이재령 선생님(국어)</option>
+                <option value="임영아 선생님(영어)">임영아 선생님(영어)</option>
+                <option value="이min희 선생님(사회)">이민희 선생님(사회)</option>
+                <option value="지연경 선생님">지연경 선생님</option>
+                <option value="강성권 선생님(수학)">강성권 선생님(수학)</option>
+                <option value="최지원 선생님(생명과학)">최지원 선생님(생명과학)</option>
+                <option value="황일수 선생님(수학)">황일수 선생님(수학)</option>
+                <option value="허남은 선생님(디지털 튜터)">허남은 선생님(디지털 튜터)</option>
+                <option value="정연우 선생님(영어)">정연우 선생님(영어)</option>
+                <option value="이동준 선생님(수학)">이동준 선생님(수학)</option>
+                <option value="이지은 선생님(국어)">이지은 선생님(국어)</option>
+                <option value="박문희 선생님(한문)">박문희 선생님(한문)</option>
+            </select>
+        </div>
+        <button type="submit" id="submitBtn">선생님 호출하기</button>
+    </form>
+    <div id="alertMessage" class="message"></div>
+</div>
+
+<script>
+    // ⚠️ 새로 발급받은 구글 웹 앱 URL 주소를 넣어주세요.
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwnnRJfBa90fu2-NkG0WeBvEm1__OzthLu5XYN2bYHAYjEFbagFjhurh4Z7G11_0mE/exec";
+
+    document.getElementById('callForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const submitBtn = document.getElementById('submitBtn');
+        const alertMessage = document.getElementById('alertMessage');
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = "호출 신호 보내는 중...";
+        alertMessage.style.display = "none";
+
+        // 표준 Form 데이터 형식으로 변환 (CORS 프리패스 핵심)
+        const params = new URLSearchParams();
+        params.append('studentId', document.getElementById('studentId').value.trim());
+        params.append('studentName', document.getElementById('studentName').value.trim());
+        params.append('purpose', document.getElementById('purpose').value);
+        params.append('teacherName', document.getElementById('teacherName').value);
+
+        fetch(GAS_WEB_APP_URL, {
+            method: 'POST',
+            mode: 'no-cors', // 브라우저 검사를 아예 생략하고 데이터를 무조건 밀어넣음
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params
+        })
+        .then(() => {
+            // no-cors 모드는 성공 여부를 브라우저가 판별하지 못하므로, 전송 시도 자체를 성공으로 처리합니다.
+            alertMessage.className = "message success";
+            alertMessage.innerText = "🔔 호출이 완료되었습니다! 교무실 밖에서 잠시만 대기해주세요.";
+            alertMessage.style.display = "block";
+            document.getElementById('callForm').reset();
+        })
+        .catch(err => {
+            alertMessage.className = "message error";
+            alertMessage.innerText = "❌ 시스템 지연이 발생했습니다. 다시 시도해 주세요.";
+            alertMessage.style.display = "block";
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "선생님 호출하기";
+        });
+    });
+</script>
+</body>
+</html>

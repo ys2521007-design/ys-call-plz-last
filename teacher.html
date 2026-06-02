@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>본교무실 호출 모니터링 시스템 (교사용)</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #1a1a20; color: #ffffff; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 600px; background: #252530; padding: 30px; border-radius: 12px; box-shadow: 0 6px 25px rgba(0,0,0,0.4); text-align: center; }
+        h1 { color: #4cc9f0; font-size: 26px; margin: 0 0 10px 0; }
+        .status { font-size: 14px; color: #ffbc42; margin-bottom: 20px; padding: 10px; background: #111; border-radius: 6px; font-weight: bold; }
+        .btn-start { background-color: #4cc9f0; color: #1a1a20; border: none; padding: 14px 40px; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s; width: 100%; box-sizing: border-box; }
+        .btn-start:hover { background-color: #37b0d6; }
+        .log-list { margin-top: 25px; text-align: left; max-height: 450px; overflow-y: auto; }
+        .log-item { background: #323245; padding: 16px; border-radius: 8px; margin-bottom: 12px; border-left: 6px solid #4cc9f0; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .time { font-size: 13px; color: #00f5d4; font-weight: bold; }
+        .msg { font-size: 17px; font-weight: bold; margin-top: 6px; color: #ffffff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🔔 본교무실 호출 모니터링</h1>
+    <div class="status" id="statusText">브라우저 오디오 보안 정책으로 인해 아래 시작 버튼을 눌러야 활성화됩니다.</div>
+    <button class="btn-start" id="startBtn" onclick="startMonitoring()">알림 시스템 시작하기</button>
+
+    <div class="log-list" id="logList"></div>
+</div>
+
+<script>
+    // ⚠️ 구글 웹 앱 URL 주소를 여기에 기입하세요. (index.html에 넣은 것과 동일한 URL)
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwnnRJfBa90fu2-NkG0WeBvEm1__OzthLu5XYN2bYHAYjEFbagFjhurh4Z7G11_0mE/exec";
+    
+    let isListening = false;
+    const playedCalls = new Set(); // 중복 소리 방지 필터
+
+    function startMonitoring() {
+        if (isListening) return;
+        isListening = true;
+        
+        document.getElementById('startBtn').style.display = 'none';
+        const statusEl = document.getElementById('statusText');
+        statusEl.innerText = "🟢 실시간 원격 호출 감지 시스템 작동 중 (스피커 볼륨을 확인해 주세요)";
+        statusEl.style.color = "#4edf7a";
+        statusEl.style.backgroundColor = "#122b1a";
+        
+        // 시스템 구동 테스트 음성 출력
+        speakTTS("알림 시스템이 활성화되었습니다. 정상적으로 감지를 시작합니다.");
+
+        // 4초 간격 자동 동기화 루프 작동
+        syncLog();
+        setInterval(syncLog, 4000);
+    }
+
+    function syncLog() {
+        fetch(GAS_WEB_APP_URL)
+        .then(res => {
+            if(!res.ok) throw new Error("네트워크 응답 불량");
+            return res.json();
+        })
+        .then(data => {
+            if (data.status === "success" && data.calls && data.calls.length > 0) {
+                // 시간순(오래된 호출부터) 정렬하여 차례대로 방송되게 처리
+                data.calls.sort((a,b) => a.id.localeCompare(b.id));
+
+                data.calls.forEach(call => {
+                    if (!playedCalls.has(call.id)) {
+                        playedCalls.add(call.id);
+                        renderAndNotify(call);
+                    }
+                });
+            }
+        })
+        .catch(err => console.error("서버 동기화 오류 지연 발생:", err));
+    }
+
+    function renderAndNotify(call) {
+        // 1. 화면 UI 로그 갱신
+        const logList = document.getElementById('logList');
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        item.innerHTML = `
+            <div class="time">[오후 ${call.time}] ➔ ${call.teacherName} 수신</div>
+            <div class="msg">${call.studentId} ${call.studentName} : [${call.purpose}] 목적으로 방문</div>
+        `;
+        logList.insertBefore(item, logList.firstChild);
+
+        // 2. 문제 요구사항 맞춤 음성 문장 조합 및 송출
+        const speechMsg = `${call.teacherName}, ${call.studentId} ${call.studentName} 학생이 ${call.purpose} 관련해서 찾아왔습니다.`;
+        speakTTS(speechMsg);
+    }
+
+    function speakTTS(text) {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ko-KR';
+            utterance.rate = 0.95; // 전달력을 위해 살짝 차분한 속도로 변경
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        } else {
+            console.error("해당 브라우저는 음성 합성 기능을 지원하지 않습니다.");
+        }
+    }
+</script>
+</body>
+</html>
