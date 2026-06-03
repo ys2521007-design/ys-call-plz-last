@@ -12,9 +12,10 @@
         .btn-start { background-color: #4cc9f0; color: #1a1a20; border: none; padding: 14px 40px; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s; width: 100%; box-sizing: border-box; }
         .btn-start:hover { background-color: #37b0d6; }
         .log-list { margin-top: 25px; text-align: left; max-height: 450px; overflow-y: auto; }
-        .log-item { background: #323245; padding: 16px; border-radius: 8px; margin-bottom: 12px; border-left: 6px solid #4cc9f0; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .log-item { background: #323245; padding: 16px; border-radius: 8px; margin-bottom: 12px; border-left: 6px solid #4cc9f0; box-shadow: 0 2px 8px rgba(0,0,0,0.2); animation: fadeIn 0.5s ease-in-out; }
         .time { font-size: 13px; color: #00f5d4; font-weight: bold; }
         .msg { font-size: 17px; font-weight: bold; margin-top: 6px; color: #ffffff; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -28,11 +29,12 @@
 </div>
 
 <script>
-    // ⚠️ 구글 웹 앱 URL 주소를 여기에 기입하세요. (index.html에 넣은 것과 동일한 URL)
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz9mbBVKfBkb0fYmqa9JS7RVmZI7dXNtXCPdcC4Oo4CvMyrU5WBMB1fVhL8lyavryNn/exec";
+    // ⚠️ 구글 웹 앱 URL 주소를 복사해 넣어주세요. (index.html과 동일해야 함)
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwZXzYUQDvDUxFShoWWbHougyHjr0tFz3E38fX8e0bnTUpya-P0mXW_utfKXEk9fZ8a/exec";
     
     let isListening = false;
-    const playedCalls = new Set(); // 중복 소리 방지 필터
+    const playedCalls = new Set(); // 중복 송출 감지소거 필터
+    let isFirstLoad = true; // 최초 접속 시 과거 내역 대량 단체 방송 차단 플래그
 
     function startMonitoring() {
         if (isListening) return;
@@ -44,61 +46,83 @@
         statusEl.style.color = "#4edf7a";
         statusEl.style.backgroundColor = "#122b1a";
         
-        // 시스템 구동 테스트 음성 출력
-        speakTTS("알림 시스템이 활성화되었습니다. 정상적으로 감지를 시작합니다.");
+        // 오디오 계층 활성화 테스트
+        speakTTS("알림 시스템이 활성화되었습니다. 정상적으로 감지를 시작합니다.", false);
 
-        // 4초 간격 자동 동기화 루프 작동
+        // 첫 동기화 즉시 기동 및 이후 4초 간격 폴링 루프 작동
         syncLog();
         setInterval(syncLog, 4000);
     }
 
     function syncLog() {
-        fetch(GAS_WEB_APP_URL)
+        // 캐시 무력화 파라미터를 붙여 언제나 최신 데이터 수신 유도
+        fetch(GAS_WEB_APP_URL + "?_cb=" + new Date().getTime())
         .then(res => {
-            if(!res.ok) throw new Error("네트워크 응답 불량");
+            if(!res.ok) throw new Error("네트워크 연결 신호 불량");
             return res.json();
         })
         .then(data => {
             if (data.status === "success" && data.calls && data.calls.length > 0) {
-                // 시간순(오래된 호출부터) 정렬하여 차례대로 방송되게 처리
-                data.calls.sort((a,b) => a.id.localeCompare(b.id));
+                
+                // 오래된 데이터가 아래로 가고 최신 호출이 먼저 들어오도록 내부 정렬 안정화
+                const items = [...data.calls].reverse(); 
 
-                data.calls.forEach(call => {
+                // 메모리 누수 방지 (캐싱 세트가 200개를 넘어가면 청소)
+                if (playedCalls.size > 200) {
+                    playedCalls.clear();
+                }
+
+                items.forEach(call => {
                     if (!playedCalls.has(call.id)) {
                         playedCalls.add(call.id);
-                        renderAndNotify(call);
+                        
+                        // 화면에 표시
+                        renderLogUI(call);
+                        
+                        // 최초 로딩 시 쌓여있던 옛날 기록이 한꺼번에 스피커로 짖어대는 현상 차단
+                        if (!isFirstLoad) {
+                            const speechMsg = `${call.teacherName}, ${call.studentId} ${call.studentName} 학생이 ${call.purpose} 관련해서 찾아왔습니다.`;
+                            speakTTS(speechMsg, true);
+                        }
                     }
                 });
+                
+                if (isFirstLoad) {
+                    isFirstLoad = false; // 첫 기동 정비 단계 해제
+                }
             }
         })
-        .catch(err => console.error("서버 동기화 오류 지연 발생:", err));
+        .catch(err => console.error("서버 동기화 지연 상태 점검 중:", err));
     }
 
-    function renderAndNotify(call) {
-        // 1. 화면 UI 로그 갱신
+    function renderLogUI(call) {
         const logList = document.getElementById('logList');
+        
+        // 이미 UI에 렌더링된 동일 ID가 있는지 2차 검증 후 삽입
+        if (document.getElementById(call.id)) return;
+
         const item = document.createElement('div');
+        item.id = call.id;
         item.className = 'log-item';
         item.innerHTML = `
-            <div class="time">[오후 ${call.time}] ➔ ${call.teacherName} 수신</div>
-            <div class="msg">${call.studentId} ${call.studentName} : [${call.purpose}] 목적으로 방문</div>
+            <div class="time">[시간: ${call.time}] ➔ ${call.teacherName} 수신</div>
+            <div class="msg">${call.studentId} ${call.studentName} : [${call.purpose}]</div>
         `;
         logList.insertBefore(item, logList.firstChild);
-
-        // 2. 문제 요구사항 맞춤 음성 문장 조합 및 송출
-        const speechMsg = `${call.teacherName}, ${call.studentId} ${call.studentName} 학생이 ${call.purpose} 관련해서 찾아왔습니다.`;
-        speakTTS(speechMsg);
     }
 
-    function speakTTS(text) {
+    function speakTTS(text, clearQueue) {
         if ('speechSynthesis' in window) {
+            if (clearQueue) {
+                window.speechSynthesis.cancel(); // 이전 스피치 큐를 날려 음성 겹침 현상 해결
+            }
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'ko-KR';
-            utterance.rate = 0.95; // 전달력을 위해 살짝 차분한 속도로 변경
+            utterance.rate = 0.92; // 교무실 전파력을 확보하기 위해 자분하고 가독성 높은 속도로 제어
             utterance.pitch = 1.0;
             window.speechSynthesis.speak(utterance);
         } else {
-            console.error("해당 브라우저는 음성 합성 기능을 지원하지 않습니다.");
+            console.error("이 브라우저는 웹 TTS를 지원하지 않습니다. 크롬 브라우저를 권장합니다.");
         }
     }
 </script>
