@@ -84,8 +84,8 @@
 </div>
 
 <script>
-    // ⚠️ 중요: 새로 배포한 웹 앱 URL 주소를 넣어주세요.
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz9mbBVKfBkb0fYmqa9JS7RVmZI7dXNtXCPdcC4Oo4CvMyrU5WBMB1fVhL8lyavryNn/exec";
+    // ⚠️ 중요: 발급받으신 최종 구글 웹 앱 URL 주소 확인 후 사용해 주세요.
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwZXzYUQDvDUxFShoWWbHougyHjr0tFz3E38fX8e0bnTUpya-P0mXW_utfKXEk9fZ8a/exec";
 
     document.getElementById('callForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -96,29 +96,38 @@
         submitBtn.innerText = "호출 신호 보내는 중...";
         alertMessage.style.display = "none";
 
-        // 안정적인 규격 데이터 포맷 구성
         const sId = document.getElementById('studentId').value.trim();
         const sName = document.getElementById('studentName').value.trim();
         const ppose = document.getElementById('purpose').value;
         const tName = document.getElementById('teacherName').value;
 
-        const formData = `studentId=${encodeURIComponent(sId)}&studentName=${encodeURIComponent(sName)}&purpose=${encodeURIComponent(ppose)}&teacherName=${encodeURIComponent(tName)}`;
+        // 리다이렉트 우회 및 CORS 이슈 완벽 해결을 위한 파라미터 조합 빌드
+        const urlWithParams = GAS_WEB_APP_URL + 
+            "?studentId=" + encodeURIComponent(sId) + 
+            "&studentName=" + encodeURIComponent(sName) + 
+            "&purpose=" + encodeURIComponent(ppose) + 
+            "&teacherName=" + encodeURIComponent(tName);
 
-        fetch(GAS_WEB_APP_URL, {
-            method: 'POST',
-            mode: 'no-cors', 
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData
+        // GET/POST 하이브리드 바인딩 요청 처리 방식 채택
+        fetch(urlWithParams, { method: 'POST' })
+        .then(res => {
+            if(!res.ok) throw new Error("네트워크 서버 응답 불안정");
+            return res.json();
         })
-        .then(() => {
-            alertMessage.className = "message success";
-            alertMessage.innerText = "🔔 호출이 완료되었습니다! 교무실 밖에서 잠시만 대기해주세요.";
-            alertMessage.style.display = "block";
-            document.getElementById('callForm').reset();
+        .then(data => {
+            if (data.status === "success") {
+                alertMessage.className = "message success";
+                alertMessage.innerText = "🔔 호출이 완료되었습니다! 교무실 밖에서 잠시만 대기해주세요.";
+                alertMessage.style.display = "block";
+                document.getElementById('callForm').reset();
+            } else {
+                throw new Error(data.message || "서버 처리 에러");
+            }
         })
         .catch(err => {
+            console.error(err);
             alertMessage.className = "message error";
-            alertMessage.innerText = "❌ 시스템 지연이 발생했습니다. 다시 시도해 주세요.";
+            alertMessage.innerText = "❌ 전송 실패: 인터넷 연결을 확인하거나 다시 호출 버튼을 눌러주세요.";
             alertMessage.style.display = "block";
         })
         .finally(() => {
